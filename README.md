@@ -173,8 +173,8 @@ The repository is deployable as is: Community Cloud installs `requirements.txt` 
 1. Push this folder to a GitHub repository (`main` branch).
 2. Open <https://share.streamlit.io>, sign in with GitHub, and choose **Create app -> Deploy a
    public app from GitHub** (or open
-   <https://share.streamlit.io/deploy?repository=mehakmittal1234/grapevine-disease-classifier&branch=main&mainModule=app.py>).
-3. Repository `mehakmittal1234/grapevine-disease-classifier`, branch `main`, main file `app.py`; app URL
+   <https://share.streamlit.io/deploy?repository=Dhruv-ux-dev/grapevine-disease-classifier&branch=main&mainModule=app.py>).
+3. Repository `Dhruv-ux-dev/grapevine-disease-classifier`, branch `main`, main file `app.py`; app URL
    `grapevine-disease-classifier` (live at <https://grapevine-disease-classifier.streamlit.app/>); under
    **Advanced settings** select **Python 3.12** (3.13 and 3.14 also work); click **Deploy**.
 4. The first build takes a few minutes. Apps on the free tier sleep after a period without

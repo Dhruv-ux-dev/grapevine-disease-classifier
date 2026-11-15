@@ -10,7 +10,7 @@ from grapevine.utils import load_json
 
 MODEL_LABELS = {"efficientnet_b0": "EfficientNet-B0", "mobilenet_v2": "MobileNetV2", "resnet50": "ResNet50",
                 "mobilenet_v2_frozen": "MobileNetV2 (frozen)"}
-REPO_URL = "https://github.com/mehakmittal1234/grapevine-disease-classifier"
+REPO_URL = "https://github.com/Dhruv-ux-dev/grapevine-disease-classifier"
 
 
 @st.cache_data(show_spinner=False)

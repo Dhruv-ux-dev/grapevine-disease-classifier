@@ -155,12 +155,11 @@ def readme_section() -> list[str]:
     t = m["test"]["all"]
     ci = m.get("test_accuracy_exact_95ci_one_image_per_leaf")
     lines += [f"**Selected model: {best}** ({card['selection_rule']})."]
+    lines += [f"**Test accuracy {_pct(t['accuracy'])}** on the held-out split: {t['errors']} errors in {t['n']} "
+              f"images, macro-F1 {_f(t['macro_f1'])}."]
     if ci:
-        lines += [f"**Headline figure: accuracy >= {_pct(ci['interval'][0])} on unseen leaves**, the exact 95% lower "
-                  f"bound counting each of the {ci['n']} held-out leaves once ({ci['correct']}/{ci['n']} correct). A "
-                  "finite test set cannot establish perfect accuracy, and field photos were not evaluated."]
-    lines += [f"Measured on the held-out split ({t['n']} images): accuracy {_pct(t['accuracy'])}, "
-              f"macro-F1 {_f(t['macro_f1'])}, {t['errors']} errors."]
+        lines += [f"Counting each of the {ci['n']} held-out leaves once: {ci['correct']}/{ci['n']} correct, exact 95% "
+                  f"interval {_pct(ci['interval'][0])} to {_pct(ci['interval'][1])}. Field photos were not evaluated."]
     bn = m.get("background_neutralized_test")
     if bn:
         lines += [f"With the background painted grey the test accuracy is {_pct(bn['all']['accuracy'])} "
@@ -208,7 +207,8 @@ def main() -> None:
     if (REPORTS_DIR / "model_comparison.csv").exists():
         lines += comparison_section()
     lines += ["## Per-model test results", ""]
-    for name in MODEL_NAMES:
+    names = list(pd.read_csv(REPORTS_DIR / "model_comparison.csv")["model"]) if (REPORTS_DIR / "model_comparison.csv").exists() else MODEL_NAMES
+    for name in names:
         if (REPORTS_DIR / name / "metrics.json").exists() and (RUNS_DIR / name / "train_summary.json").exists():
             lines += model_section(name)
     card = BEST_MODEL_DIR / "model_card.json"

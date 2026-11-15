@@ -28,7 +28,8 @@ A logistic regression on colour statistics of background-like border pixels, tra
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | mobilenet_v2 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 99.94% | 0 / 1798 | 2.23 | 39.3 | 17.9 |  |
 | resnet50 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 100.00% | 0 / 1798 | 23.52 | 54.5 | 43.9 |  |
-| efficientnet_b0 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 99.89% | 0 / 1798 | 4.01 | 165.0 | 34.6 | **yes** |
+| efficientnet_b0 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 99.89% | 0 / 1798 | 4.01 | 165.0 | 34.6 |  |
+| mobilenet_v2_frozen | 0.9701 | 97.27% | 0.9716 | 0.9724 | 0.9719 | 0.9972 | 0.9707 (1732) | 93.60% | 87.10% | 49 / 1798 | 2.23 | 36.6 | 2.7 | **yes** |
 
 ## Per-model test results
 
@@ -107,4 +108,29 @@ Background painted grey: test accuracy 99.89% (2 errors / 1798); un-augmented ph
 
 Black-corner shortcut check on 383 non-Healthy test photos: predicted-Healthy rate 0.00% unchanged vs 0.00% after a black-cornered 30-degree rotation (accuracy 100.00% vs 100.00%).
 
-Selected model: **efficientnet_b0** -> `artifacts/best_model/model.pt`.
+### mobilenet_v2_frozen
+
+Best epoch 1 (head) of 2 run; training time 2.7 min on mps (AMP: False).
+
+| test view | n | accuracy | balanced acc. | macro-F1 | weighted-F1 | MCC | errors |
+|---|---|---|---|---|---|---|---|
+| all test images | 1798 | 97.27% | 97.24% | 0.9719 | 0.9728 | 0.9637 | 49 |
+| un-augmented JPG photos | 433 | 96.07% | 96.36% | 0.9610 | 0.9608 | 0.9459 | 17 |
+| one image per leaf group | 458 | 95.85% | 96.85% | 0.9577 | 0.9586 | 0.9400 | 19 |
+| Keras-augmented PNGs | 840 | 98.10% | 98.18% | 0.9794 | 0.9811 | 0.9748 | 16 |
+| strict (no weak match to train) | 1732 | 97.17% | 97.12% | 0.9707 | 0.9718 | 0.9623 | 49 |
+
+| class (test, all) | precision | recall | F1 | support |
+|---|---|---|---|---|
+| Black Rot | 0.9306 | 0.9653 | 0.9476 | 403 |
+| ESCA | 0.9667 | 0.9478 | 0.9572 | 460 |
+| Healthy | 0.9892 | 0.9850 | 0.9871 | 466 |
+| Leaf Blight | 1.0000 | 0.9915 | 0.9957 | 469 |
+
+One image per leaf: 439/458 correct; exact (Clopper-Pearson) 95% interval for accuracy 93.60% - 97.48%.
+Leaf-group bootstrap 95% interval (all test images): accuracy 95.93% - 98.39%, macro-F1 0.9563 - 0.9828.
+Background painted grey: test accuracy 87.10% (232 errors / 1798); un-augmented photos 89.15%.
+
+Black-corner shortcut check on 383 non-Healthy test photos: predicted-Healthy rate 0.78% unchanged vs 0.26% after a black-cornered 30-degree rotation (accuracy 95.82% vs 96.34%).
+
+Selected model: **mobilenet_v2_frozen** -> `artifacts/best_model/model.pt`.

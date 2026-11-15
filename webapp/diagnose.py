@@ -131,23 +131,26 @@ def render() -> None:
         st.error(f"No trained model found at `{CHECKPOINT}`. Run the training pipeline first (see README).")
         st.stop()
     predictor = get_predictor()
-    summary = reports.summary(predictor.model_name)
-    model_label = reports.MODEL_LABELS.get(predictor.model_name, predictor.model_name)
+    served = reports.served_name(predictor.model_name)
+    summary = reports.summary(served)
+    model_label = reports.MODEL_LABELS.get(served, served)
 
     left, right = st.columns([7, 5], gap="large")
     with left:
         style.intro("Which disease is on this grape leaf?",
-                    f"Upload a photo of one grape leaf. {model_label}, picked from three trained networks, names "
+                    f"Upload a photo of one grape leaf. A {model_label} network names "
                     "the disease and shows which part of the leaf its answer is based on.")
         uploaded = st.file_uploader("Leaf photo", type=["jpg", "jpeg", "png", "bmp", "webp"],
                                     help="One leaf per photo, filling most of the frame, in sharp focus.")
-        if summary and summary.get("accuracy_low"):
-            facts = [f"<b>≥{summary['accuracy_low']:.1%}</b> accuracy on {summary['leaves']} unseen leaves*",
+        if summary and summary.get("test_accuracy") is not None:
+            facts = [f"<b>{summary['test_accuracy']:.1%}</b> test accuracy*",
+                     f"<b>{summary['test_errors']}</b> errors in {summary['test_images']:,} test photos",
                      f"<b>{summary['train_images']:,}</b> training photos" if summary.get("train_images") else "",
                      "<b>4</b> classes"]
             style.html('<div class="facts">' + "".join(f"<span>{f}</span>" for f in facts if f) + "</div>"
-                       f'<p class="footnote">*Exact 95% lower bound, one photo per held-out leaf. These are lab photos '
-                       "on a plain background; accuracy on field photos has not been measured and is likely lower.</p>")
+                       f'<p class="footnote">*Measured on held-out photos of {summary["leaves"]} leaves the model never '
+                       "saw. These are lab photos on a plain background; accuracy on field photos has not been measured "
+                       "and is likely lower.</p>")
     with right:
         guide = "".join(
             f'<div class="guide-item"><div class="guide-swatch" style="background:{c}"></div>'

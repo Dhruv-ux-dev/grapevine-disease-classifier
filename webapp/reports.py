@@ -8,7 +8,8 @@ import streamlit as st
 from grapevine.config import BEST_MODEL_DIR, DATA_REPORT_JSON, MODEL_NAMES, REPORTS_DIR, RUNS_DIR
 from grapevine.utils import load_json
 
-MODEL_LABELS = {"efficientnet_b0": "EfficientNet-B0", "mobilenet_v2": "MobileNetV2", "resnet50": "ResNet50"}
+MODEL_LABELS = {"efficientnet_b0": "EfficientNet-B0", "mobilenet_v2": "MobileNetV2", "resnet50": "ResNet50",
+                "mobilenet_v2_frozen": "MobileNetV2 (frozen)"}
 REPO_URL = "https://github.com/mehakmittal1234/grapevine-disease-classifier"
 
 
@@ -42,7 +43,9 @@ def comparison() -> pd.DataFrame | None:
 @st.cache_data(show_spinner=False)
 def histories() -> pd.DataFrame | None:
     frames = []
-    for name in MODEL_NAMES:
+    table = comparison()
+    names = list(table["model"]) if table is not None else list(MODEL_NAMES)
+    for name in names:
         path = RUNS_DIR / name / "history.csv"
         if path.exists():
             frames.append(pd.read_csv(path).assign(model=name, label=MODEL_LABELS.get(name, name)))
@@ -53,6 +56,13 @@ def histories() -> pd.DataFrame | None:
 def test_predictions(model: str) -> pd.DataFrame | None:
     path = REPORTS_DIR / model / "test_predictions.csv"
     return pd.read_csv(path, usecols=["label", "pred", "confidence", "is_original"]) if path.exists() else None
+
+
+def served_name(architecture: str) -> str:
+    """Run name of the served checkpoint (e.g. ``mobilenet_v2_frozen``) when the model card describes it."""
+    card = model_card() or {}
+    trained = (card.get("training") or {}).get("model")
+    return card["model"] if card.get("model") and architecture in (card["model"], trained) else architecture
 
 
 def summary(model: str) -> dict | None:
@@ -67,6 +77,11 @@ def summary(model: str) -> dict | None:
         "accuracy_low": (ci.get("interval") or [None])[0],
         "leaves": ci.get("n"),
         "test_images": card["test"]["all"]["n"],
+        "test_accuracy": card["test"]["all"]["accuracy"],
+        "test_errors": card["test"]["all"]["errors"],
+        "confusion_matrix": card["test"]["all"].get("confusion_matrix"),
+        "class_names": card.get("class_names"),
+        "leaves_correct": ci.get("correct"),
         "train_images": (splits.get("train") or {}).get("files"),
         "background_accuracy": background.get("accuracy"),
         "background_errors": background.get("errors"),

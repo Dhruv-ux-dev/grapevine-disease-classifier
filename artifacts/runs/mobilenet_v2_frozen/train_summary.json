@@ -1,0 +1,13 @@
+{
+  "model": "mobilenet_v2",
+  "best_epoch": 1,
+  "best_phase": "head",
+  "best_val_macro_f1": 0.970086284651443,
+  "best_val_acc": 0.97165991902834,
+  "best_val_loss": 0.5030974398257761,
+  "epochs_run": 2,
+  "train_seconds": 162.0,
+  "parameters": 2228996,
+  "device": "mps",
+  "amp": false
+}

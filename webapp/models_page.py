@@ -1,4 +1,4 @@
-"""Models page: the three trained networks side by side, and how the served one was chosen."""
+"""Models page: the trained networks side by side, and which one the app serves."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ import streamlit as st
 from . import charts, reports, style
 
 METRICS = {
+    "Test accuracy": ("test_accuracy", "Test accuracy", ".2%"),
+    "Test errors": ("test_errors", "Wrong answers on the test set", ".0f"),
     "Validation log-loss": ("val_log_loss", "Validation log-loss (lower is better)", ".4f"),
     "Parameters": ("params_millions", "Parameters (millions)", ".1f"),
-    "File size": ("checkpoint_mb", "Checkpoint size (MB)", ".1f"),
     "CPU time": ("latency_ms_cpu", "CPU time per photo on an M2 (ms)", ".0f"),
-    "GPU time": ("latency_ms_gpu", "Apple-GPU time per photo (ms)", ".1f"),
-    "Training time": ("train_minutes", "Training time (minutes)", ".0f"),
+    "Training time": ("train_minutes", "Training time (minutes)", ".1f"),
 }
 CURVES = {
     "Validation macro-F1": ("val_macro_f1", "Validation macro-F1"),
@@ -24,37 +24,37 @@ CURVES = {
 
 def render() -> None:
     df = reports.comparison()
-    style.intro("Three networks, one fair comparison.",
-                "MobileNetV2, ResNet50 and EfficientNet-B0 were fine-tuned from ImageNet on the same leaf-grouped "
-                "split, with the same augmentation, schedule and early stopping. Only the validation set was used "
-                "to pick a winner; the test set was opened once, after the choice.")
+    style.intro("Four models, one test set.",
+                "MobileNetV2, ResNet50 and EfficientNet-B0 were fine-tuned from ImageNet. A fourth model keeps "
+                "MobileNetV2's ImageNet layers frozen and trains only the final classifier. All four were trained "
+                "on the same leaf-grouped split and tested on the same held-out photos.")
     if df is None:
         st.info("The model comparison report is not available in this deployment.")
         return
     chosen = df.loc[df["selected"]].iloc[0] if df["selected"].any() else df.iloc[0]
-    card = reports.model_card() or {}
 
     style.figures([
-        (f"{len(df)}", "architectures trained, each in two phases: classifier head first, then partial fine-tuning"),
-        (f"{df['train_minutes'].sum():.0f} min", "total training time on an 8 GB Apple M2"),
-        (chosen["label"], f"served in this app, {chosen['params_millions']:.1f} M parameters, "
-                          f"{chosen['checkpoint_mb']:.0f} MB"),
+        (f"{len(df)}", "models trained on an 8 GB Apple M2"),
+        (f"{chosen['test_accuracy']:.1%}", f"test accuracy of the served model, {int(chosen['test_errors'])} errors "
+                                           f"in {int(chosen['test_n']):,} photos"),
+        (chosen["label"], f"served in this app: {chosen['params_millions']:.1f} M parameters, "
+                          f"{chosen['train_minutes']:.1f} min of training"),
     ])
 
-    style.section("How the winner was picked")
-    rule = card.get("selection_rule", "max validation macro-F1, then min validation log-loss, then fewest parameters")
-    style.html(f'<div class="pick">Rule, fixed before training: <b>{rule}</b>. All three tied on validation macro-F1, '
-               f"so the decision went to log-loss, which rewards well-calibrated probabilities. "
-               f"{chosen['label']} had the lowest ({chosen['val_log_loss']:.4f}).</div>")
+    style.section("Which model the app serves")
+    others = df[~df["selected"]]
+    lo, hi = others["test_accuracy"].min(), others["test_accuracy"].max()
+    span = f"{lo:.1%}" if lo == hi else f"{lo:.1%} to {hi:.1%}"
+    style.html(f'<div class="pick">The app serves <b>{chosen["label"]}</b>: only its last layer was trained, so it '
+               f"is the simplest and fastest to train of the four ({chosen['train_minutes']:.1f} min). The fine-tuned "
+               f"networks scored higher on this test set ({span}, at most {int(others['test_errors'].max())} errors), "
+               "but lab photos from one dataset are an easy test; the simpler model's errors make its limits "
+               "easier to see.</div>")
 
     style.section("Compare the models", "Pick a measure. The served model is highlighted.")
-    choice = st.segmented_control("Measure", list(METRICS), default="Validation log-loss", label_visibility="collapsed")
-    column, title, fmt = METRICS[choice or "Validation log-loss"]
-    log_loss = column == "val_log_loss"
-    st.altair_chart(charts.metric_bars(df, column, title, fmt, chosen["model"], zero=not log_loss),
-                    width="stretch", theme=None)
-    if log_loss:
-        st.caption("Zoomed axis: the three values differ only in the third decimal place.")
+    choice = st.segmented_control("Measure", list(METRICS), default="Test accuracy", label_visibility="collapsed")
+    column, title, fmt = METRICS[choice or "Test accuracy"]
+    st.altair_chart(charts.metric_bars(df, column, title, fmt, chosen["model"]), width="stretch", theme=None)
 
     hist = reports.histories()
     if hist is not None:
@@ -65,16 +65,19 @@ def render() -> None:
         st.altair_chart(charts.training_curves(hist, column, title, chosen["label"]), width="stretch", theme=None)
 
     style.section("All measurements")
-    table = df[["label", "params_millions", "checkpoint_mb", "latency_ms_cpu", "latency_ms_gpu", "train_minutes",
-                "best_epoch", "val_log_loss"]]
+    table = df[["label", "test_accuracy", "test_errors", "test_macro_f1", "params_millions", "checkpoint_mb",
+                "latency_ms_cpu", "train_minutes", "epochs_run", "val_log_loss"]]
     st.dataframe(table, hide_index=True, column_config={
         "label": "Model",
+        "test_accuracy": st.column_config.NumberColumn("Test accuracy", format="percent"),
+        "test_errors": st.column_config.NumberColumn("Test errors", format="%d"),
+        "test_macro_f1": st.column_config.NumberColumn("Test macro-F1", format="%.4f"),
         "params_millions": st.column_config.NumberColumn("Parameters (M)", format="%.1f"),
         "checkpoint_mb": st.column_config.NumberColumn("File (MB)", format="%.1f"),
         "latency_ms_cpu": st.column_config.NumberColumn("CPU ms / photo", format="%.0f"),
-        "latency_ms_gpu": st.column_config.NumberColumn("GPU ms / photo", format="%.1f"),
-        "train_minutes": st.column_config.NumberColumn("Training (min)", format="%.0f"),
-        "best_epoch": st.column_config.NumberColumn("Best epoch"),
+        "train_minutes": st.column_config.NumberColumn("Training (min)", format="%.1f"),
+        "epochs_run": st.column_config.NumberColumn("Epochs"),
         "val_log_loss": st.column_config.NumberColumn("Val log-loss", format="%.4f"),
     })
-    st.caption("Timings are batch size 1 on the training machine (Apple M2). Per-model test-set reports are on GitHub.")
+    st.caption(f"Test set: {int(chosen['test_n']):,} held-out photos. Timings are batch size 1 on the training "
+               "machine (Apple M2).")

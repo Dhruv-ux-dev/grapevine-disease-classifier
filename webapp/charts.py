@@ -81,7 +81,7 @@ def metric_bars(df: pd.DataFrame, column: str, title: str, fmt: str, selected: s
 def training_curves(hist: pd.DataFrame, column: str, title: str, selected_label: str) -> alt.Chart:
     pick = alt.selection_point(fields=["label"], bind="legend")
     colors = alt.Scale(domain=[selected_label] + sorted(set(hist["label"]) - {selected_label}),
-                       range=[GRAPE, COPPER, "#9AA593"])
+                       range=[GRAPE, COPPER, "#9AA593", "#C08A2E"])
     base = alt.Chart(hist).encode(
         x=alt.X("epoch:O", title="Epoch", axis=alt.Axis(labelAngle=0)),
         y=alt.Y(f"{column}:Q", title=title, scale=alt.Scale(zero=False)),
@@ -123,3 +123,25 @@ def robustness(rows: list[dict]) -> alt.Chart:
     labels = base.mark_text(align="right", dx=-8, color="#FFFFFF", fontSize=12.5, fontWeight=600).encode(
         x="accuracy:Q", text=alt.Text("label:N"))
     return _style((bars + labels).properties(height=46 * len(df)))
+
+
+def confusion_matrix(matrix: list[list[int]], names: list[str]) -> alt.Chart:
+    rows = [{"true": t, "pred": p, "n": matrix[i][j], "right": i == j}
+            for i, t in enumerate(names) for j, p in enumerate(names)]
+    df = pd.DataFrame(rows)
+    df["share"] = df["n"] / df.groupby("true")["n"].transform("sum")
+    base = alt.Chart(df).encode(x=alt.X("pred:N", sort=names, title="Predicted class", axis=alt.Axis(labelAngle=0, orient="top")),
+                                y=alt.Y("true:N", sort=names, title="True class"))
+    def fill(row) -> str:
+        if row["right"]:
+            return "#3E6B35" if row["share"] > 0.5 else "#E6EAE2"
+        return "#B04A2B" if row["n"] >= 10 else ("#E9A58F" if row["n"] > 0 else "#F3F5F0")
+    df["fill"] = df.apply(fill, axis=1)
+    cells = base.mark_rect(cornerRadius=4, stroke="#FFFFFF", strokeWidth=2).encode(
+        color=alt.Color("fill:N", scale=None, legend=None),
+        tooltip=[alt.Tooltip("true:N", title="True class"), alt.Tooltip("pred:N", title="Predicted"),
+                 alt.Tooltip("n:Q", title="Photos"), alt.Tooltip("share:Q", title="Share of true class", format=".1%")],
+    )
+    text = base.mark_text(fontSize=14, fontWeight=600).encode(
+        text="n:Q", color=alt.condition("(datum.right && datum.share > 0.5) || datum.n >= 10 && !datum.right", alt.value("#FFFFFF"), alt.value(INK)))
+    return _style((cells + text).properties(height=300))

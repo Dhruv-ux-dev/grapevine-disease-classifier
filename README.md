@@ -2,8 +2,10 @@
 
 Classifies a photo of a single grape leaf as **Black Rot**, **ESCA**, **Healthy** or **Leaf Blight**.
 Three ImageNet-pretrained CNNs (MobileNetV2, ResNet50, EfficientNet-B0) are fine-tuned on a
-**leaf-level, leakage-audited split**, compared on standard metrics, and the best one (chosen on
-the validation set only) is served with Grad-CAM explanations through a CLI and a Streamlit app.
+**leaf-level, leakage-audited split** and compared on standard metrics, alongside a lighter baseline:
+MobileNetV2 with its ImageNet layers frozen, training only the classifier head. The app serves that
+baseline (test accuracy 97.27%, 49 errors in 1,798 photos) with Grad-CAM explanations through a CLI and
+a Streamlit app. To serve it again after re-running `compare`, use `python -m grapevine.serve_baseline`.
 
 **Live app:** <https://grapevine-disease-classifier.streamlit.app/> (Streamlit Community Cloud). Four pages:
 **Diagnose** (upload a leaf; class, confidence and a drag-to-compare Grad-CAM view), **Data cleaning** (how the
@@ -23,15 +25,15 @@ Generated from the output files by `python -m grapevine.report`; full details in
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | mobilenet_v2 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 99.94% | 0 / 1798 | 2.23 | 39.3 | 17.9 |  |
 | resnet50 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 100.00% | 0 / 1798 | 23.52 | 54.5 | 43.9 |  |
-| efficientnet_b0 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 99.89% | 0 / 1798 | 4.01 | 165.0 | 34.6 | **yes** |
+| efficientnet_b0 | 1.0000 | 100.00% | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 (1732) | 99.20% | 99.89% | 0 / 1798 | 4.01 | 165.0 | 34.6 |  |
+| mobilenet_v2_frozen | 0.9701 | 97.27% | 0.9716 | 0.9724 | 0.9719 | 0.9972 | 0.9707 (1732) | 93.60% | 87.10% | 49 / 1798 | 2.23 | 36.6 | 2.7 | **yes** |
 
-**Selected model: efficientnet_b0** (max validation macro-F1, then min validation log-loss, then fewest parameters).
-**Headline figure: accuracy >= 99.20% on unseen leaves**, the exact 95% lower bound counting each of the 458 held-out leaves once (458/458 correct). A finite test set cannot establish perfect accuracy, and field photos were not evaluated.
-Measured on the held-out split (1798 images): accuracy 100.00%, macro-F1 1.0000, 0 errors.
-With the background painted grey the test accuracy is 99.89% (2 errors).
-All models reach the same test accuracy, so the choice rests on the validation log-loss tie-break (mobilenet_v2 0.0797, resnet50 0.0798, efficientnet_b0 0.0781). If CPU latency matters more, mobilenet_v2 is 4.2x faster on CPU (39 vs 165 ms per image): pass `--checkpoint artifacts/runs/mobilenet_v2/best.pt` to `predict`, or set `GRAPEVINE_CHECKPOINT` for the app.
+**Selected model: mobilenet_v2_frozen** (deployment choice: frozen-backbone MobileNetV2 (classifier head only, no fine-tuning), the simplest of the trained models).
+**Test accuracy 97.27%** on the held-out split: 49 errors in 1798 images, macro-F1 0.9719.
+Counting each of the 458 held-out leaves once: 439/458 correct, exact 95% interval 93.60% to 97.48%. Field photos were not evaluated.
+With the background painted grey the test accuracy is 87.10% (232 errors).
 
-![confusion matrix](artifacts/reports/efficientnet_b0/confusion_matrix_test_all.png)
+![confusion matrix](artifacts/reports/mobilenet_v2_frozen/confusion_matrix_test_all.png)
 
 Grad-CAM example grids for the test set are written locally to `artifacts/reports/gradcam/` by `python -m grapevine.gradcam` (they show dataset photos, so they are not committed); the app computes Grad-CAM live for every uploaded image.
 
